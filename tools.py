@@ -59,7 +59,7 @@ def read_hanzi_from_file(file_path, get_tags=True):
             tags = words[1:]
             tags = list(tags)
         else:
-            tags = []
+            tags = ['']
 
         hanzi_dict['tags'] = tags
 
@@ -71,26 +71,23 @@ def read_hanzi_from_file(file_path, get_tags=True):
 def get_hanzi_details(hanzi):
     """
     Given an hanzi, get its translations and pinyin, return a dictionary containing all three infos
-    :param hanzi: string, hanzi to get details from
+    :param hanzi: dict, containing hanzi and tags
     :return: dict, containing hanzi's details
     """
-    # Create output structure, dict
-    hanzi_details = {'hanzi': hanzi}
-
     # Add pinyin info to the given hanzi dict
     try:
-        hanzi_details['pinyin'] = pinyin.get(hanzi)
+        hanzi['pinyin'] = pinyin.get(hanzi['hanzi'])
     except:
-        hanzi_details['pinyin'] = 'Not found'
+        hanzi['pinyin'] = 'Not found'
 
     # Add translation info to the given hanzi dict, as a list of translations.
-    translations_list = cedict.translate_word(hanzi)
+    translations_list = cedict.translate_word(hanzi['hanzi'])
     if type(translations_list) != list:
         translations_list = ['Not Found']
 
-    hanzi_details['translations'] = translations_list
+    hanzi['translations'] = translations_list
 
-    return hanzi_details
+    return hanzi
 
 
 def format_hanzi_details_to_ankiapp_flashcard(hanzi_details):
@@ -102,12 +99,12 @@ def format_hanzi_details_to_ankiapp_flashcard(hanzi_details):
     new_line_separator = '<br>'
 
     return format_anki_card(
-        front=hanzi_details['hanzi'],
-        back='%s - %s' % (
+        front='<font size="7">%s</font>' % hanzi_details['hanzi'],
+        back='<b><font size="5">%s</font></b><br>%s' % (
             hanzi_details['pinyin'],
             new_line_separator.join(hanzi_details['translations'])
         ),
-        tags=hanzi_details.get('tags', None)
+        tags=hanzi_details.get('tags', [''])
     )
 
 
@@ -125,7 +122,7 @@ def generate_anki_cards_from_file(input_file_path, output_file_path):
 
     # Get the additional details, pinyin and translations
     hanzi_details = [
-        get_hanzi_details(hanzi['hanzi'])
+        get_hanzi_details(hanzi)
         for hanzi in hanzi_list
     ]
 

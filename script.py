@@ -20,12 +20,12 @@ output_path = path + 'output_flashcards/'
 
 # Generate a single flashcard from a single file
 generate_anki_cards_from_file(
-    input_file_path=input_path + 'lesson_1.txt',
-    output_file_path=output_path + 'lesson_1.tsv'
+    input_file_path=input_path + 'lesson_2.txt',
+    output_file_path=output_path + 'lesson_2.tsv'
 )
 
-# Generate all flashcards from a given folder
-generate_all(
-    input_folder=input_path,
-    output_folder=output_path
-)
+# # Generate all flashcards from a given folder
+# generate_all(
+#     input_folder=input_path,
+#     output_folder=output_path
+# )
