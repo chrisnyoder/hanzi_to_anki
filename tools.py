@@ -35,7 +35,7 @@ def read_hanzi_from_file(file_path, get_tags=True):
 
     incorrect_lines = ['\n', '', None]
 
-    with open(file=file_path, mode='r') as f:
+    with open(file=file_path, mode='r', encoding='utf8') as f:
         lines = f.readlines()
 
     # Process lines
@@ -133,5 +133,5 @@ def generate_anki_cards_from_file(input_file_path, output_file_path):
     ]
 
     # Write them to the given output file path
-    with open(file=output_file_path, mode='w+') as f:
+    with open(file=output_file_path, mode='w+', encoding='utf8') as f:
         f.write('\n'.join(formatted_details))
