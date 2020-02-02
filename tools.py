@@ -1,5 +1,7 @@
 import pinyin
 import pinyin.cedict as cedict
+import os
+from natsort import natsorted
 
 
 def format_anki_card(front, back, tags=None, separator='\t'):
@@ -108,11 +110,22 @@ def format_hanzi_details_to_ankiapp_flashcard(hanzi_details):
     )
 
 
-def generate_anki_cards_from_file(input_file_path, output_file_path):
+def write_card(formatted_details, output_file_path):
+    """
+
+    :param formatted_details:
+    :param output_file_path:
+    :return:
+    """
+    with open(file=output_file_path, mode='w+', encoding='utf8') as f:
+        f.write('\n'.join(formatted_details))
+
+
+def generate_anki_cards_from_file(input_file_path, default_tag=None):
     """
 
     :param input_file_path:
-    :param output_file_path:
+    :param default_tag:
     :return:
     """
     # Extract list of hanzi from the given input file path
@@ -126,6 +139,11 @@ def generate_anki_cards_from_file(input_file_path, output_file_path):
         for hanzi in hanzi_list
     ]
 
+    # Add a default tag if given
+    if default_tag:
+        for hanzi in hanzi_details:
+            hanzi['tags'].append(default_tag)
+
     # Format to anki card format
     formatted_details = [
         format_hanzi_details_to_ankiapp_flashcard(details)
@@ -133,5 +151,65 @@ def generate_anki_cards_from_file(input_file_path, output_file_path):
     ]
 
     # Write them to the given output file path
-    with open(file=output_file_path, mode='w+', encoding='utf8') as f:
-        f.write('\n'.join(formatted_details))
+    return formatted_details
+
+
+def write_anki_cards_from_file(input_file_path, output_file_path):
+    """
+
+    :param input_file_path:
+    :param output_file_path:
+    :return:
+    """
+    # Generate the cards content
+    formatted_details = generate_anki_cards_from_file(input_file_path)
+
+    # Export the content
+    write_card(formatted_details, output_file_path)
+
+
+def generate_all(input_folder_path, output_folder_path):
+    """
+
+    :param input_folder_path:
+    :param output_folder_path:
+    :return:
+    """
+    input_files = os.listdir(input_folder_path)
+
+    for file in input_files:
+        file_name = file.split('.')[0]
+
+        write_anki_cards_from_file(
+            input_file_path=input_folder_path + file,
+            output_file_path=output_folder_path + file_name + '.tsv'
+        )
+
+
+def generate_one_from_folder(input_folder_path, output_file_path):
+    """
+
+    :param input_folder_path:
+    :param output_file_path:
+    :return:
+    """
+    input_files = natsorted(os.listdir(input_folder_path))
+
+    all_formatted_details = []
+
+    for file in input_files:
+        file_name = file.split('.')[0]
+
+        # Generate the cards content
+        formatted_details = generate_anki_cards_from_file(
+            input_file_path=input_folder_path + file,
+            default_tag=file_name
+        )
+
+        # Append to global list
+        all_formatted_details += formatted_details
+
+    # Export the content
+    write_card(all_formatted_details, output_file_path)
+
+
