@@ -1,28 +1,13 @@
 import pinyin
 import pinyin.cedict as cedict
 import os
+import logging
+import shutil
+from zipfile import ZipFile
+from os.path import basename
 from natsort import natsorted
 
-
-def format_anki_card(front, back, tags=None, separator='\t'):
-    """
-    Generic function to generate a string recognized by anki apps import modules
-    :param front: string, front of the card.
-    :param back: string, back of the card.
-    :param tags: list of strings, tags of the card, no tags by defualt.
-    :param separator: string, separator between front back and tags, tab by default, for tsv format.
-    :return:
-    """
-    tags_separator = ','
-    anki_elements = [
-        front,
-        back
-    ]
-
-    if tags:
-        anki_elements.append(tags_separator.join(tags))
-
-    return separator.join(anki_elements)
+logger = logging.getLogger(__name__)
 
 
 def read_hanzi_from_file(file_path, get_tags=True):
@@ -61,7 +46,7 @@ def read_hanzi_from_file(file_path, get_tags=True):
             tags = words[1:]
             tags = list(tags)
         else:
-            tags = ['']
+            tags = []
 
         hanzi_dict['tags'] = tags
 
@@ -80,34 +65,20 @@ def get_hanzi_details(hanzi):
     try:
         hanzi['pinyin'] = pinyin.get(hanzi['hanzi'])
     except:
+        logger.warning('Pinyin not found for: %s' % hanzi['hanzi'])
         hanzi['pinyin'] = 'Not found'
 
     # Add translation info to the given hanzi dict, as a list of translations.
     translations_list = cedict.translate_word(hanzi['hanzi'])
     if type(translations_list) != list:
+        logger.warning('Translation not found for: %s' % hanzi['hanzi'])
         translations_list = ['Not Found']
 
     hanzi['translations'] = translations_list
 
+    hanzi['audio'] = '%s.mp3' % hanzi['hanzi']
+
     return hanzi
-
-
-def format_hanzi_details_to_ankiapp_flashcard(hanzi_details):
-    """
-    Given a dictionary with hanzi details: hanzi pinyin translations and tags, format it as a anki card string.
-    :param hanzi_details: dict, containing one hanzi's details
-    :return: string, formatted anki card string
-    """
-    new_line_separator = '<br>'
-
-    return format_anki_card(
-        front='<font size="7">%s</font>' % hanzi_details['hanzi'],
-        back='<b><font size="5">%s</font></b><br>%s' % (
-            hanzi_details['pinyin'],
-            new_line_separator.join(hanzi_details['translations'])
-        ),
-        tags=hanzi_details.get('tags', [''])
-    )
 
 
 def write_card(formatted_details, output_file_path):
@@ -121,18 +92,14 @@ def write_card(formatted_details, output_file_path):
         f.write('\n'.join(formatted_details))
 
 
-def generate_anki_cards_from_file(input_file_path, default_tag=None):
+def generate_anki_cards_from_file(hanzi_list, default_tag=None, card_type=None):
     """
 
-    :param input_file_path:
+    :param hanzi_list:
     :param default_tag:
+    :param card_type
     :return:
     """
-    # Extract list of hanzi from the given input file path
-    hanzi_list = read_hanzi_from_file(
-        file_path=input_file_path
-    )
-
     # Get the additional details, pinyin and translations
     hanzi_details = [
         get_hanzi_details(hanzi)
@@ -144,28 +111,88 @@ def generate_anki_cards_from_file(input_file_path, default_tag=None):
         for hanzi in hanzi_details:
             hanzi['tags'].append(default_tag)
 
-    # Format to anki card format
-    formatted_details = [
-        format_hanzi_details_to_ankiapp_flashcard(details)
-        for details in hanzi_details
+    from card_types import HanziFront, SpeechFront, TranslationFront
+
+    # All by default
+    card_types = [card_type] if card_type else [
+        HanziFront,
+        SpeechFront,
+        TranslationFront
     ]
+
+    formatted_details = []
+    for card_type in card_types:
+        formatted_details += [
+            card_type.format(hanzi_details=details).formatted_line
+            for details in hanzi_details
+        ]
 
     # Write them to the given output file path
     return formatted_details
 
 
-def write_anki_cards_from_file(input_file_path, output_file_path):
+def zip_directory(output_file_path):
+    # create a ZipFile object
+    with ZipFile(output_file_path + '.zip', 'w') as zip_obj:
+        # Iterate over all the files in directory
+        for folder_name, sub_folders, filenames in os.walk(output_file_path):
+            for filename in filenames:
+                # create complete filepath of file in directory
+                file_path = os.path.join(folder_name, filename)
+
+                # Add file to zip
+                zip_obj.write(file_path, basename(file_path))
+
+
+def generate_audios(hanzi_list, output_file_path):
+    from tts_tools import create_audio
+
+    for hanzi in hanzi_list:
+        hanzi = hanzi['hanzi']
+
+        create_audio(hanzi, output_path=output_file_path)
+
+
+def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=False):
     """
 
     :param input_file_path:
     :param output_file_path:
+    :param add_audio:
+    :param mode
     :return:
     """
+    # Preparing the folder
+    try:
+        shutil.rmtree(output_file_path)
+    except:
+        pass
+    os.mkdir(output_file_path)
+
+    card_file = output_file_path + '/cards.csv'
+
+    # Extract list of hanzi from the given input file path
+    hanzi_list = read_hanzi_from_file(
+        file_path=input_file_path
+    )
+
     # Generate the cards content
-    formatted_details = generate_anki_cards_from_file(input_file_path)
+    formatted_details = generate_anki_cards_from_file(hanzi_list)
+
+    input('Continue ? Press any key')
 
     # Export the content
-    write_card(formatted_details, output_file_path)
+    write_card(formatted_details, card_file)
+
+    # Generate the audios
+    if add_audio:
+        generate_audios(hanzi_list, output_file_path)
+
+    # Zip directory. directory => directory.zip
+    zip_directory(output_file_path)
+
+    # Remove directory
+    shutil.rmtree(output_file_path)
 
 
 def generate_all(input_folder_path, output_folder_path):
@@ -200,9 +227,13 @@ def generate_one_from_folder(input_folder_path, output_file_path):
     for file in input_files:
         file_name = file.split('.')[0]
 
+        hanzi_list = read_hanzi_from_file(
+            file_path=input_folder_path + file,
+        )
+
         # Generate the cards content
         formatted_details = generate_anki_cards_from_file(
-            input_file_path=input_folder_path + file,
+            hanzi_list=hanzi_list,
             default_tag=file_name
         )
 
@@ -211,5 +242,3 @@ def generate_one_from_folder(input_folder_path, output_file_path):
 
     # Export the content
     write_card(all_formatted_details, output_file_path)
-
-

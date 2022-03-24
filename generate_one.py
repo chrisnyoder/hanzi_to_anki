@@ -29,5 +29,6 @@ if __name__ == '__main__':
     # Generate a single flashcard set from a single file
     write_anki_cards_from_file(
         input_file_path=input_file,
-        output_file_path=output_file
+        output_file_path=output_file,
+        add_audio=True
     )
