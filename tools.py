@@ -3,10 +3,11 @@ import pinyin.cedict as cedict
 import os
 import logging
 import shutil
+import time
 from zipfile import ZipFile
 from os.path import basename
 from natsort import natsorted
-
+from openai_handler import OpenAIHandler
 logger = logging.getLogger(__name__)
 
 
@@ -91,26 +92,12 @@ def write_card(formatted_details, output_file_path):
     with open(file=output_file_path, mode='w+', encoding='utf8') as f:
         f.write('\n'.join(formatted_details))
 
-
-def generate_anki_cards_from_file(hanzi_list, default_tag=None, card_type=None):
-    """
-
-    :param hanzi_list:
-    :param default_tag:
-    :param card_type
-    :return:
-    """
-    # Get the additional details, pinyin and translations
-    hanzi_details = [
-        get_hanzi_details(hanzi)
-        for hanzi in hanzi_list
-    ]
-
+def get_formatted_details_using_dict(hanzi_details, default_tag=None, card_type=None):
     # Add a default tag if given
     if default_tag:
         for hanzi in hanzi_details:
             hanzi['tags'].append(default_tag)
-
+   
     from card_types import HanziFront, SpeechFront, TranslationFront
 
     # All by default
@@ -130,6 +117,33 @@ def generate_anki_cards_from_file(hanzi_list, default_tag=None, card_type=None):
     # Write them to the given output file path
     return formatted_details
 
+def generate_anki_cards_using_dict(hanzi_list, default_tag=None, card_type=None):
+    """
+
+    :param hanzi_list:
+    :param default_tag:
+    :param card_type
+    :return:
+    """
+    # Get the additional details, pinyin and translations
+    hanzi_details = [
+        get_hanzi_details(hanzi)
+        for hanzi in hanzi_list
+    ]
+
+    return get_formatted_details_using_dict(hanzi_details, default_tag, card_type)
+
+
+def generate_anki_cards_using_ai(hanzi_list, default_tag=None, card_type=None):
+    openai_handler = OpenAIHandler()
+    
+    example_sentence_dicts = []
+    for hanzi in hanzi_list:
+        example_sentence_dict = openai_handler.get_openai_response(hanzi['hanzi'])
+        example_sentence_dicts.append(example_sentence_dict)
+        time.sleep(1)
+
+    return get_formatted_details_using_dict(example_sentence_dicts, default_tag, card_type)
 
 def zip_directory(output_file_path):
     # create a ZipFile object
@@ -153,9 +167,8 @@ def generate_audios(hanzi_list, output_file_path):
         create_audio(hanzi, output_path=output_file_path)
 
 
-def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=False):
+def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=False, use_ai=False):
     """
-
     :param input_file_path:
     :param output_file_path:
     :param add_audio:
@@ -177,8 +190,11 @@ def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=Fals
     )
 
     # Generate the cards content
-    formatted_details = generate_anki_cards_from_file(hanzi_list)
-
+    if use_ai:
+        formatted_details = generate_anki_cards_using_ai(hanzi_list)
+    else:
+        formatted_details = generate_anki_cards_using_dict(hanzi_list)
+   
     input('Continue ? Press any key')
 
     # Export the content
@@ -232,7 +248,7 @@ def generate_one_from_folder(input_folder_path, output_file_path):
         )
 
         # Generate the cards content
-        formatted_details = generate_anki_cards_from_file(
+        formatted_details = generate_anki_cards_using_dict(
             hanzi_list=hanzi_list,
             default_tag=file_name
         )
