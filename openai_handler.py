@@ -1,33 +1,88 @@
 import os
 from openai import OpenAI
+import json
+import time
 
 class OpenAIHandler:
     def __init__(self):
         try:
             self.openai_api_key = os.getenv('ANKI_OPENAI_API_KEY')
             self.client = OpenAI(api_key=self.openai_api_key)
+            self.assistant_id = "asst_MYeN7hvrv9jd2DJKorZP1Gkk"
         except Exception as e:
             print(f"Error initializing OpenAI client: {e}. If you have not set the ANKI_OPENAI_API_KEY environment variable, please set it and try again.")
             raise e
 
     def get_openai_response(self, hanzi):
-        # Return a dictionary with the following keys: sentence, translation, pinyin
+        print("Getting OpenAI response for hanzi:", hanzi)
 
-        response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": "you are a helpful Chinese learning assistant that takes one or more hanzi characters and returns a comma delimited list of the following and nothing else: 1. example sentence using those characters 2. the english translation of that sentence 3. the pinyin of that sentence. For example, if the input is '钥匙' the output could be '我把钥匙丢在办公室里了, I left my keys in the office, wǒ bǎ yào shi diào zài gōng shì lǐ le,'", "role": "user", "content": hanzi}]
+        thread = self.client.beta.threads.create()
+        message = self.client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=f"Provide example data for: {hanzi}"
         )
 
-        # Split the response into a list of strings
-        response_list = response.choices[0].message.content.split(',')
+        run = self.client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id=self.assistant_id,
+        )
+
+        if run.status == 'completed':
+            messages = self.client.beta.threads.messages.list(
+                thread_id=thread.id
+            )
+            print(messages)
+        else:
+            print(run.status)
+
+        tool_outputs = []
+
+        for tool in run.required_action.submit_tool_outputs.tool_calls:
+            if tool.function.name == 'provide_example_sentence':
+                tool_outputs.append({
+                    "tool_call_id": tool.id,
+                    "output": "tool output"
+                })
+
+        if tool_outputs:
+            try: 
+                run = self.client.beta.threads.runs.submit_tool_outputs_and_poll(
+                    thread_id=thread.id,
+                    run_id=run.id,
+                    tool_outputs=tool_outputs
+                )
+                print("tool outputs submitted")
+            except Exception as e:
+                print(f"Error submitting tool outputs: {e}")
+                raise e
+        else:
+            print("no tool outputs to submit")
+
+        if run.status == 'completed':
+            messages = self.client.beta.threads.messages.list(
+                thread_id=thread.id
+            )
+            print(messages)
+        else:
+            print(run.status)   
 
         try:
-            return {
-                'sentence': response_list[0],
-                'translations': response_list[1],
-                'pinyin': response_list[2]
-            }
-        except Exception as e:
-            print(f"OpenAI response is not in the expected format: {e}")
+            print("Here is the response:", messages[-1].content[0].text.value)
+            # response_dict = json.loads(messages[-1].content[0].text.value)
+            # return {
+            #     'sentence': response_dict['example_sentence'],
+            #     'translations': response_dict['english_translation'],
+            #     'pinyin': response_dict['pinyin']
+            # }
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON from assistant response: {e}")
             raise e
+        except KeyError as e:
+            print(f"Missing expected key in assistant response: {e}")
+            raise e
+        except Exception as e:
+            print(f"Unexpected error processing assistant response: {e}")
+            raise e
+
 
