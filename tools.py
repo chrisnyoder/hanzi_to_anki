@@ -141,7 +141,9 @@ def generate_anki_cards_using_ai(hanzi_list, default_tag=None, card_type=None):
     for hanzi in hanzi_list:
         example_sentence_dict = openai_handler.get_openai_response(hanzi['hanzi'])
         example_sentence_dicts.append(example_sentence_dict)
-        time.sleep(1)
+
+    for example_sentence_dict in example_sentence_dicts:
+        print("example sentence dict:", example_sentence_dict)
 
     return get_formatted_details_using_dict(example_sentence_dicts, default_tag, card_type)
 

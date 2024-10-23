@@ -1,0 +1,9 @@
+"<font size="7">股票</font>","<b><font size="5">Wǒ mǎile yīxiē gǔpiào.</font></b><br>I bought some stocks.","HanziFront",,,,股票.mp3
+"<font size="7">哲学</font>","<b><font size="5">Wǒ duì zhéxué hěn gǎn xìngqù.</font></b><br>I am very interested in philosophy.","HanziFront",,,,哲学.mp3
+"<font size="7">值得</font>","<b><font size="5">zhè bù diàn yǐng zhídé yī kàn.</font></b><br>This movie is worth watching.","HanziFront",,,,值得.mp3
+"","<font size="7">股票</font><br><b><font size="5">Wǒ mǎile yīxiē gǔpiào.</font></b><br>I bought some stocks.","SpeechFront",,,股票.mp3,
+"","<font size="7">哲学</font><br><b><font size="5">Wǒ duì zhéxué hěn gǎn xìngqù.</font></b><br>I am very interested in philosophy.","SpeechFront",,,哲学.mp3,
+"","<font size="7">值得</font><br><b><font size="5">zhè bù diàn yǐng zhídé yī kàn.</font></b><br>This movie is worth watching.","SpeechFront",,,值得.mp3,
+"I bought some stocks.","<font size="7">股票</font><br><b><font size="5">Wǒ mǎile yīxiē gǔpiào.</font></b>","TranslationFront",,,,股票.mp3
+"I am very interested in philosophy.","<font size="7">哲学</font><br><b><font size="5">Wǒ duì zhéxué hěn gǎn xìngqù.</font></b>","TranslationFront",,,,哲学.mp3
+"This movie is worth watching.","<font size="7">值得</font><br><b><font size="5">zhè bù diàn yǐng zhídé yī kàn.</font></b>","TranslationFront",,,,值得.mp3
