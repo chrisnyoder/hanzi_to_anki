@@ -4,6 +4,7 @@ import os
 import logging
 import shutil
 import time
+import anki_connect_handler
 from zipfile import ZipFile
 from os.path import basename
 from natsort import natsorted
@@ -145,7 +146,9 @@ def generate_anki_cards_using_ai(hanzi_list, default_tag=None, card_type=None):
     for example_sentence_dict in example_sentence_dicts:
         print("example sentence dict:", example_sentence_dict)
 
-    return get_formatted_details_using_dict(example_sentence_dicts, default_tag, card_type)
+    return example_sentence_dicts
+    
+
 
 def zip_directory(output_file_path):
     # create a ZipFile object
@@ -169,7 +172,7 @@ def generate_audios(hanzi_list, output_file_path):
         create_audio(hanzi, output_path=output_file_path)
 
 
-def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=False, use_ai=False):
+def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=False, use_ai=False, reading_from_file=False):
     """
     :param input_file_path:
     :param output_file_path:
@@ -177,27 +180,45 @@ def write_anki_cards_from_file(input_file_path, output_file_path, add_audio=Fals
     :param mode
     :return:
     """
-    # Preparing the folder
-    try:
-        shutil.rmtree(output_file_path)
-    except:
-        pass
-    os.mkdir(output_file_path)
 
-    card_file = output_file_path + '/cards.csv'
+    if reading_from_file:
+        # check if file exists  
+        if not os.path.exists(output_file_path):
+            raise FileNotFoundError(f"The file {output_file_path} does not exist.")
 
-    # Extract list of hanzi from the given input file path
-    hanzi_list = read_hanzi_from_file(
-        file_path=input_file_path
-    )
+        card_file = output_file_path
+    else:
+        # Preparing the folder
+        try:
+            shutil.rmtree(output_file_path)
+        except:
+            pass
+        os.mkdir(output_file_path)
+
+        card_file = output_file_path + '/cards.csv'
+        # Extract list of hanzi from the given input file path
+        hanzi_list = read_hanzi_from_file(
+            file_path=input_file_path
+        )
 
     # Generate the cards content
-    if use_ai:
-        formatted_details = generate_anki_cards_using_ai(hanzi_list)
+    if reading_from_file: 
+        example_sentence_dict = make_dict_from_cards_csv(card_file)
     else:
-        formatted_details = generate_anki_cards_using_dict(hanzi_list)
+        if use_ai:
+            example_sentence_dict = generate_anki_cards_using_ai(hanzi_list)
+            from card_types import ExampleSentenceFront
+            card_type = ExampleSentenceFront
+            formatted_details = get_formatted_details_using_dict(example_sentence_dict, default_tag=None, card_type=card_type)
+        else:
+            formatted_details = generate_anki_cards_using_dict(hanzi_list)
    
     input('Continue ? Press any key')
+    
+    for example in example_sentence_dict:
+        print("example sentence dict:", example)
+
+    anki_connect_handler.add_cards_to_existing_deck(deck_name="Christian's Beginner Chinese Deck", example_sentence_dict=example_sentence_dict)
 
     # Export the content
     write_card(formatted_details, card_file)
@@ -260,3 +281,11 @@ def generate_one_from_folder(input_folder_path, output_file_path):
 
     # Export the content
     write_card(all_formatted_details, output_file_path)
+
+# make dict from cards.csv
+def make_dict_from_cards_csv(cards_csv_path):
+    with open(cards_csv_path, 'r', encoding='utf8') as f:
+        lines = f.readlines()
+    data = [line.strip().split(',') for line in lines]
+    keys = ["example_sentence", "pinyin", "translation", "tags"]
+    return [dict(zip(keys, line)) for line in data]

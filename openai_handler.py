@@ -17,6 +17,9 @@ class OpenAIHandler:
         print("Getting OpenAI response for hanzi:", hanzi)
         thread = self.create_thread()
         run = self.create_and_poll_run(thread.id, hanzi)
+       
+        time.sleep(1)
+       
         tool_outputs = self.handle_tool_outputs(run)
         run = self.wait_for_completion(run, thread.id, tool_outputs)
         return self.process_response(thread.id, hanzi)

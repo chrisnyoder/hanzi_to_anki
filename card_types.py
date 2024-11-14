@@ -55,6 +55,10 @@ class AnkiCardCSVLine:
     @staticmethod
     def format_hanzi(hanzi_details):
         return '<font size="7">%s</font>' % hanzi_details['hanzi']
+    
+    @staticmethod
+    def format_example_sentence(hanzi_details):
+        return '<font size="5">%s</font>' % hanzi_details['example_sentence']
 
     @staticmethod
     def format_translation(hanzi_details):
@@ -137,7 +141,6 @@ class SpeechFront(AnkiCardCSVLine):
             )
         )
 
-
 class TranslationFront(AnkiCardCSVLine):
 
     def __init__(self, formatted_line):
@@ -166,6 +169,33 @@ class TranslationFront(AnkiCardCSVLine):
                 back=back,
                 tags=tags,
                 back_audio=back_audio,
+                separator=','
+            )
+        )
+
+class ExampleSentenceFront(AnkiCardCSVLine):
+
+    def __init__(self, formatted_line):
+        super().__init__(formatted_line)
+
+    @classmethod
+    def format(cls, hanzi_details):
+        
+        front = NEW_LINE_SEPARATOR.join([
+            cls.format_example_sentence(hanzi_details),
+            cls.format_pinyin(hanzi_details),
+        ])
+
+        back = cls.format_translation(hanzi_details)
+
+        tags = copy.deepcopy(hanzi_details.get('tags', []))
+        tags += [cls.__name__]
+
+        return cls(
+            formatted_line=cls.format_anki_card(
+                front=front,
+                back=back,
+                tags=tags,
                 separator=','
             )
         )
